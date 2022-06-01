@@ -1,8 +1,10 @@
 package com.ws.onscripterplus;
 
+import android.Manifest.permission;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -21,7 +23,9 @@ import java.net.URLDecoder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 @SuppressLint("NewApi")
 public class Hook implements IXposedHookLoadPackage, IXposedHookInitPackageResources {
@@ -46,6 +50,17 @@ public class Hook implements IXposedHookLoadPackage, IXposedHookInitPackageResou
 
             Toast.makeText(activity, "ONScripter Plus+ 加载成功!", Toast.LENGTH_SHORT).show();
 
+            PackageManager packageManager = activity.getPackageManager();
+
+            List<String> strings = Arrays.asList(
+                packageManager.getPackageInfo("com.onscripter.plus",
+                    PackageManager.GET_PERMISSIONS).requestedPermissions);
+
+            if (!strings.contains(permission.MANAGE_EXTERNAL_STORAGE)) {
+              Toast.makeText(activity, "没有权限 " + permission.MANAGE_EXTERNAL_STORAGE,
+                  Toast.LENGTH_SHORT).show();
+              return;
+            }
             // 先判断有没有权限
             if (!Environment.isExternalStorageManager()) {
               Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
@@ -85,6 +100,19 @@ public class Hook implements IXposedHookLoadPackage, IXposedHookInitPackageResou
             param.setResult(o);
           }
         });
+
+    // 去除广告
+    XposedHelpers.findAndHookMethod("com.google.android.gms.ads.AdActivity", lpparam.classLoader,
+        "onCreate",
+        Bundle.class, new XC_MethodHook() {
+          @Override
+          protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+            super.afterHookedMethod(param);
+            Activity activity = (Activity) param.thisObject;
+            activity.finish();
+          }
+        });
+
   }
 
   /**
